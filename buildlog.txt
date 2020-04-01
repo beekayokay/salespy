@@ -1,0 +1,10 @@
+salespy
+Epicor Transactions Object
+    Fields
+    Page Layouts
+Asset - Status - Add 'Needs Additional Info'
+Asset Auto Creation
+Flow Builder
+FO Process Builder
+Report
+Dataload Assets

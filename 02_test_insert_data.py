@@ -30,7 +30,7 @@ count_chars = 0
 count_rows = 0
 
 for each in csv_tuple:
-    if (datetime.now() - time_check).seconds > 5:
+    if (datetime.now() - time_check).seconds > 15:
         print(f'{count_rows} rows have been processed. {round((datetime.now() - start_time).seconds/60, 2)} minutes have passed')
         time_check = datetime.now()
 

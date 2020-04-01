@@ -1,4 +1,6 @@
+from datetime import datetime
 import getpass
+import json
 import random
 
 import numpy as np
@@ -99,12 +101,56 @@ class SalesforceClass:
                 f"WHERE Order_Num_Ln__c IN {order_num_ln}"
             )
 
-        query_df = self.bulk_query(
-            creds=creds, object_api='Epicor_Transaction__c',
-            query_call=query_call
-        )
+        try:
+            query_df = self.bulk_query(
+                creds=creds, object_api='Epicor_Transaction__c',
+                query_call=query_call
+            )
+        except IndexError:
+            query_df = pd.DataFrame()
 
         return query_df
+
+    def upsert_data(self, creds, object_api, ex_id, df):
+        df['Book_Date__c'] = df['Book_Date__c'].dt.strftime('%Y-%m-%d')
+        df['Need_By_Date__c'] = df['Need_By_Date__c'].dt.strftime('%Y-%m-%d')
+        df = df.replace(np.nan, '', regex=True)
+
+        df_tuple = df.itertuples(index=False)
+
+        bulk_data = []
+        count_records = 0
+        count_chars = 0
+        count_rows = 0
+        start_time = datetime.now()
+        time_check = datetime.now()
+
+        for each in df_tuple:
+            if (datetime.now() - time_check).seconds > 15:
+                print(
+                    f'{count_rows} rows have been processed. '
+                    f'{round((datetime.now() - start_time).seconds/60, 2)} '
+                    'minutes have passed'
+                )
+                time_check = datetime.now()
+
+            if count_records >= 5000 or count_chars >= 5000000:
+                getattr(creds.bulk, object_api).upsert(bulk_data, ex_id)
+                bulk_data = []
+                count_records = 0
+                count_chars = 0
+            each_dict = each._asdict()
+            bulk_data.append(each_dict)
+            count_records += 1
+            count_chars += len(json.dumps(each_dict))
+            count_rows += 1
+        getattr(creds.bulk, object_api).upsert(bulk_data, ex_id)
+
+        print(
+            f'{count_rows} rows have been processed. '
+            f'{round((datetime.now() - start_time).seconds/60, 2)} '
+            'minutes have passed'
+        )
 
 
 class EpicorClass:

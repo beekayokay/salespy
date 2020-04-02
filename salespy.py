@@ -8,6 +8,103 @@ import pandas as pd
 from simple_salesforce import Salesforce, SalesforceLogin
 
 
+SFDC_LIST = [
+    'OrderNum__c', 'OrderLn__c', 'Name', 'Book_Date__c', 'BookType__c',
+    'OrderRel__c', 'Prod_Code__c', 'SN__c', 'Order_Line_Amt__c', 'PO_Num__c',
+    'Need_By_Date__c', 'Quote_Num__c', 'Quote_Line__c',
+    'Sales_Representative__c', 'Salesperson__c',
+    'Primary_Salesperson_Origin__c', 'Sales_Director_Origin__c',
+    'Regional_Sales_Manager_Origin__c', 'Cust_ID__c', 'Customer_Name__c',
+    'Ultimate_User__c', 'Bill_To_Name__c', 'Bill_To_Address_1__c',
+    'Bill_To_Address_2__c', 'Bill_To_Address_3__c', 'Bill_To_City__c',
+    'Bill_To_State__c', 'Bill_To_Zip__c', 'Bill_To_Country__c',
+    'Ship_To_Num__c', 'Ship_To_Name__c', 'Ship_To_Address_1__c',
+    'Ship_To_Address_2__c', 'Ship_To_Address_3__c', 'Ship_To_City__c',
+    'Ship_To_State__c', 'Ship_To_Zip__c', 'Ship_To_Country__c', 'Packager__c',
+    'Market_Segment__c', 'Payment_Terms__c', 'OrderHed_FOB__c', 'SysRowID__c',
+    'Order_Num_Ln__c', 'Factory_Order__c', 'Asset__c'
+]
+
+EPICOR_TO_SFDC_DICT = {
+    'Tran Num': 'Name', 'Book Date': 'Book_Date__c', 'BookType': 'BookType__c',
+    'OrderNum': 'OrderNum__c', 'OrderLn': 'OrderLn__c',
+    'OrderRel': 'OrderRel__c', 'Prod Code': 'Prod_Code__c', 'SN': 'SN__c',
+    'Order Line Amt': 'Order_Line_Amt__c', 'PO Num': 'PO_Num__c',
+    'Need By Date': 'Need_By_Date__c', 'Quote Num': 'Quote_Num__c',
+    'Quote Line': 'Quote_Line__c',
+    'Sales Representative': 'Sales_Representative__c',
+    'Salesperson': 'Salesperson__c',
+    'Primary Salesperson Origin': 'Primary_Salesperson_Origin__c',
+    'Sales Director Origin': 'Sales_Director_Origin__c',
+    'Regional Sales Manager Origin': 'Regional_Sales_Manager_Origin__c',
+    'Cust. ID': 'Cust_ID__c', 'Customer Name': 'Customer_Name__c',
+    'Ultimate User': 'Ultimate_User__c', 'Bill To Name': 'Bill_To_Name__c',
+    'Bill To  Address': 'Bill_To_Address_1__c',
+    'Bill To Address2': 'Bill_To_Address_2__c',
+    'Bill To Address3': 'Bill_To_Address_3__c',
+    'Bill To  Address.1': 'Bill_To_City__c',
+    'Bill To State': 'Bill_To_State__c', 'Bill To Zip': 'Bill_To_Zip__c',
+    'Bill To Country': 'Bill_To_Country__c', 'ShipToNum': 'Ship_To_Num__c',
+    'ShipTo.Name': 'Ship_To_Name__c',
+    'ShipTo.Address1': 'Ship_To_Address_1__c',
+    'ShipTo.Address2': 'Ship_To_Address_2__c',
+    'ShipTo.Address3': 'Ship_To_Address_3__c',
+    'ShipTo.City': 'Ship_To_City__c', 'ShipTo.State': 'Ship_To_State__c',
+    'ShipTo.ZIP': 'Ship_To_Zip__c', 'ShipTo.Country': 'Ship_To_Country__c',
+    'Packager': 'Packager__c', 'Market Segment': 'Market_Segment__c',
+    'Payment Terms': 'Payment_Terms__c', 'OrderHed.FOB': 'OrderHed_FOB__c',
+    'SysRowID': 'SysRowID__c'
+}
+
+EPICOR_AGG_DICT = {
+    'Name': 'last', 'Book_Date__c': 'last', 'BookType__c': 'last',
+    'OrderRel__c': 'max', 'Prod_Code__c': 'last', 'SN__c': 'first',
+    'Order_Line_Amt__c': 'sum', 'PO_Num__c': 'first',
+    'Need_By_Date__c': 'last', 'Quote_Num__c': 'first',
+    'Quote_Line__c': 'first', 'Sales_Representative__c': 'first',
+    'Salesperson__c': 'first', 'Primary_Salesperson_Origin__c': 'first',
+    'Sales_Director_Origin__c': 'first',
+    'Regional_Sales_Manager_Origin__c': 'first', 'Cust_ID__c': 'first',
+    'Customer_Name__c': 'first', 'Ultimate_User__c': 'first',
+    'Bill_To_Name__c': 'first', 'Bill_To_Address_1__c': 'first',
+    'Bill_To_Address_2__c': 'first', 'Bill_To_Address_3__c': 'first',
+    'Bill_To_City__c': 'first', 'Bill_To_State__c': 'first',
+    'Bill_To_Zip__c': 'first', 'Bill_To_Country__c': 'first',
+    'Ship_To_Num__c': 'first', 'Ship_To_Name__c': 'first',
+    'Ship_To_Address_1__c': 'first', 'Ship_To_Address_2__c': 'first',
+    'Ship_To_Address_3__c': 'first', 'Ship_To_City__c': 'first',
+    'Ship_To_State__c': 'first', 'Ship_To_Zip__c': 'first',
+    'Ship_To_Country__c': 'first', 'Packager__c': 'first',
+    'Market_Segment__c': 'first', 'Payment_Terms__c': 'first',
+    'OrderHed_FOB__c': 'first', 'SysRowID__c': 'last'
+}
+
+SFDC_EPICOR_AGG_DICT = {
+    'Name': 'last', 'Book_Date__c': 'last', 'BookType__c': 'last',
+    'OrderRel__c': 'max', 'Prod_Code__c': 'last', 'SN__c': 'first',
+    'Order_Line_Amt__c': 'sum', 'PO_Num__c': 'first',
+    'Need_By_Date__c': 'last', 'Quote_Num__c': 'first',
+    'Quote_Line__c': 'first', 'Sales_Representative__c': 'first',
+    'Salesperson__c': 'first', 'Primary_Salesperson_Origin__c': 'first',
+    'Sales_Director_Origin__c': 'first',
+    'Regional_Sales_Manager_Origin__c': 'first', 'Cust_ID__c': 'first',
+    'Customer_Name__c': 'first', 'Ultimate_User__c': 'first',
+    'Bill_To_Name__c': 'first', 'Bill_To_Address_1__c': 'first',
+    'Bill_To_Address_2__c': 'first', 'Bill_To_Address_3__c': 'first',
+    'Bill_To_City__c': 'first', 'Bill_To_State__c': 'first',
+    'Bill_To_Zip__c': 'first', 'Bill_To_Country__c': 'first',
+    'Ship_To_Num__c': 'first', 'Ship_To_Name__c': 'first',
+    'Ship_To_Address_1__c': 'first', 'Ship_To_Address_2__c': 'first',
+    'Ship_To_Address_3__c': 'first', 'Ship_To_City__c': 'first',
+    'Ship_To_State__c': 'first', 'Ship_To_Zip__c': 'first',
+    'Ship_To_Country__c': 'first', 'Packager__c': 'first',
+    'Market_Segment__c': 'first', 'Payment_Terms__c': 'first',
+    'OrderHed_FOB__c': 'first', 'SysRowID__c': 'last',
+    'Order_Num_Ln__c': 'last', 'Factory_Order__c': 'last',
+    'Asset__c': 'last'
+}
+
+
 class SalesforceClass:
     def __init__(
         self, username, password=None, sandbox=None, security_token=None,
@@ -68,26 +165,13 @@ class SalesforceClass:
             query_call=last_tran_query
         )
 
-        return last_tran_df.iloc[0][0]
+        if last_tran_df.size > 0:
+            return last_tran_df.iloc[0][0]
+        else:
+            return 0
 
     def get_epicor_trans(self, creds, order_num_ln=None):
-        sfdc_fields = [
-            'OrderNum__c', 'OrderLn__c', 'Name', 'Book_Date__c', 'BookType__c',
-            'OrderRel__c', 'Prod_Code__c', 'SN__c', 'Order_Line_Amt__c',
-            'PO_Num__c', 'Need_By_Date__c', 'Quote_Num__c', 'Quote_Line__c',
-            'Sales_Representative__c', 'Salesperson__c',
-            'Primary_Salesperson_Origin__c', 'Sales_Director_Origin__c',
-            'Regional_Sales_Manager_Origin__c', 'Cust_ID__c',
-            'Customer_Name__c', 'Ultimate_User__c', 'Bill_To_Name__c',
-            'Bill_To_Address_1__c', 'Bill_To_Address_2__c',
-            'Bill_To_Address_3__c', 'Bill_To_City__c', 'Bill_To_State__c',
-            'Bill_To_Zip__c', 'Bill_To_Country__c', 'Ship_To_Num__c',
-            'Ship_To_Name__c', 'Ship_To_Address_1__c', 'Ship_To_Address_2__c',
-            'Ship_To_Address_3__c', 'Ship_To_City__c', 'Ship_To_State__c',
-            'Ship_To_Zip__c', 'Ship_To_Country__c', 'Packager__c',
-            'Market_Segment__c', 'Payment_Terms__c', 'OrderHed_FOB__c',
-            'SysRowID__c', 'Order_Num_Ln__c'
-        ]
+        sfdc_fields = SFDC_LIST
 
         if order_num_ln is None:
             query_call = (
@@ -110,6 +194,92 @@ class SalesforceClass:
             query_df = pd.DataFrame()
 
         return query_df
+
+    def add_sn_fo(self, creds, df):
+        sn = df['SN__c'].drop_duplicates()
+        sn.dropna(inplace=True)
+        sn_tuple = tuple(sn)
+
+        fo_df = pd.DataFrame(columns=['Id', 'Name'])
+        sn_temp_list = []
+
+        if len(sn_tuple) > 0:
+            if len(sn_tuple) == 1:
+                sn_tuple = sn_tuple[0]
+
+            for num, each in enumerate(sn_tuple):
+                sn_temp_list.append(each)
+                if len(str(sn_temp_list)) < 50000 and num != len(sn_tuple)-1:
+                    continue
+                else:
+                    fo_query = (
+                        "SELECT Id, Name FROM Factory_Order__c "
+                        f"WHERE Name IN {tuple(sn_temp_list)}"
+                    )
+                    fo_df_temp = self.bulk_query(
+                        creds=creds, object_api='Factory_Order__c',
+                        query_call=fo_query
+                    )
+                    fo_df = fo_df.append(
+                        fo_df_temp, ignore_index=True
+                    )
+                    fo_df_temp = pd.DataFrame()
+                    sn_temp_list = []
+
+        fo_df.rename(
+            columns={
+                'Id': 'Factory_Order__c',
+                'Name': 'SN__c'
+            },
+            inplace=True
+        )
+
+        df = df.merge(fo_df, how='left', on='SN__c')
+
+        return df
+
+    def add_sn_asset(self, creds, df):
+        sn = df['SN__c'].drop_duplicates()
+        sn.dropna(inplace=True)
+        sn_tuple = tuple(sn)
+
+        asset_df = pd.DataFrame(columns=['Id', 'Name'])
+        sn_temp_list = []
+
+        if len(sn_tuple) > 0:
+            if len(sn_tuple) == 1:
+                sn_tuple = sn_tuple[0]
+
+            for num, each in enumerate(sn_tuple):
+                sn_temp_list.append(each)
+                if len(str(sn_temp_list)) < 50000 and num != len(sn_tuple)-1:
+                    continue
+                else:
+                    asset_query = (
+                        "SELECT Id, Name FROM Asset "
+                        f"WHERE Name IN {tuple(sn_temp_list)}"
+                    )
+                    asset_df_temp = self.bulk_query(
+                        creds=creds, object_api='Asset',
+                        query_call=asset_query
+                    )
+                    asset_df = asset_df.append(
+                        asset_df_temp, ignore_index=True
+                    )
+                    asset_df_temp = pd.DataFrame()
+                    sn_temp_list = []
+
+        asset_df.rename(
+            columns={
+                'Id': 'Asset__c',
+                'Name': 'SN__c'
+            },
+            inplace=True
+        )
+
+        df = df.merge(asset_df, how='left', on='SN__c')
+
+        return df
 
     def upsert_data(self, creds, object_api, ex_id, df):
         df['Book_Date__c'] = df['Book_Date__c'].dt.strftime('%Y-%m-%d')
@@ -170,6 +340,10 @@ class EpicorClass:
 
         bookings_df.loc[bookings_df['Quote Num'] == 0, 'Quote Num'] = np.nan
         bookings_df.loc[bookings_df['Quote Line'] == 0, 'Quote Line'] = np.nan
+        bookings_df = bookings_df.replace('\n', ' ', regex=True)
+        bookings_df = bookings_df.replace("'", ' ', regex=True)
+        bookings_df['SN'] = bookings_df['SN'].str.strip()
+        bookings_df['SN'] = bookings_df['SN'].str[:254]
 
         bookings_df.sort_values(
             by=['Tran Num'],
@@ -178,100 +352,14 @@ class EpicorClass:
         )
 
         bookings_df.rename(
-            columns={
-                'Tran Num': 'Name',
-                'Book Date': 'Book_Date__c',
-                'BookType': 'BookType__c',
-                'OrderNum': 'OrderNum__c',
-                'OrderLn': 'OrderLn__c',
-                'OrderRel': 'OrderRel__c',
-                'Prod Code': 'Prod_Code__c',
-                'SN': 'SN__c',
-                'Order Line Amt': 'Order_Line_Amt__c',
-                'PO Num': 'PO_Num__c',
-                'Need By Date': 'Need_By_Date__c',
-                'Quote Num': 'Quote_Num__c',
-                'Quote Line': 'Quote_Line__c',
-                'Sales Representative': 'Sales_Representative__c',
-                'Salesperson': 'Salesperson__c',
-                'Primary Salesperson Origin': 'Primary_Salesperson_Origin__c',
-                'Sales Director Origin': 'Sales_Director_Origin__c',
-                'Regional Sales Manager Origin': 'Regional_Sales_Manager_Origin__c',
-                'Cust. ID': 'Cust_ID__c',
-                'Customer Name': 'Customer_Name__c',
-                'Ultimate User': 'Ultimate_User__c',
-                'Bill To Name': 'Bill_To_Name__c',
-                'Bill To  Address': 'Bill_To_Address_1__c',
-                'Bill To Address2': 'Bill_To_Address_2__c',
-                'Bill To Address3': 'Bill_To_Address_3__c',
-                'Bill To  Address.1': 'Bill_To_City__c',
-                'Bill To State': 'Bill_To_State__c',
-                'Bill To Zip': 'Bill_To_Zip__c',
-                'Bill To Country': 'Bill_To_Country__c',
-                'ShipToNum': 'Ship_To_Num__c',
-                'ShipTo.Name': 'Ship_To_Name__c',
-                'ShipTo.Address1': 'Ship_To_Address_1__c',
-                'ShipTo.Address2': 'Ship_To_Address_2__c',
-                'ShipTo.Address3': 'Ship_To_Address_3__c',
-                'ShipTo.City': 'Ship_To_City__c',
-                'ShipTo.State': 'Ship_To_State__c',
-                'ShipTo.ZIP': 'Ship_To_Zip__c',
-                'ShipTo.Country': 'Ship_To_Country__c',
-                'Packager': 'Packager__c',
-                'Market Segment': 'Market_Segment__c',
-                'Payment Terms': 'Payment_Terms__c',
-                'OrderHed.FOB': 'OrderHed_FOB__c',
-                'SysRowID': 'SysRowID__c'
-            },
+            columns=EPICOR_TO_SFDC_DICT,
             inplace=True
         )
 
         bookings_df_grouped = bookings_df.groupby(
             ['OrderNum__c', 'OrderLn__c'],
             as_index=False
-        ).agg({
-            'Name': 'last',
-            'Book_Date__c': 'last',
-            'BookType__c': 'last',
-            'OrderRel__c': 'max',
-            'Prod_Code__c': 'last',
-            'SN__c': 'first',
-            'Order_Line_Amt__c': 'sum',
-            'PO_Num__c': 'first',
-            'Need_By_Date__c': 'last',
-            'Quote_Num__c': 'first',
-            'Quote_Line__c': 'first',
-            'Sales_Representative__c': 'first',
-            'Salesperson__c': 'first',
-            'Primary_Salesperson_Origin__c': 'first',
-            'Sales_Director_Origin__c': 'first',
-            'Regional_Sales_Manager_Origin__c': 'first',
-            'Cust_ID__c': 'first',
-            'Customer_Name__c': 'first',
-            'Ultimate_User__c': 'first',
-            'Bill_To_Name__c': 'first',
-            'Bill_To_Address_1__c': 'first',
-            'Bill_To_Address_2__c': 'first',
-            'Bill_To_Address_3__c': 'first',
-            'Bill_To_City__c': 'first',
-            'Bill_To_State__c': 'first',
-            'Bill_To_Zip__c': 'first',
-            'Bill_To_Country__c': 'first',
-            'Ship_To_Num__c': 'first',
-            'Ship_To_Name__c': 'first',
-            'Ship_To_Address_1__c': 'first',
-            'Ship_To_Address_2__c': 'first',
-            'Ship_To_Address_3__c': 'first',
-            'Ship_To_City__c': 'first',
-            'Ship_To_State__c': 'first',
-            'Ship_To_Zip__c': 'first',
-            'Ship_To_Country__c': 'first',
-            'Packager__c': 'first',
-            'Market_Segment__c': 'first',
-            'Payment_Terms__c': 'first',
-            'OrderHed_FOB__c': 'first',
-            'SysRowID__c': 'last'
-        })
+        ).agg(EPICOR_AGG_DICT)
 
         bookings_df_grouped['Order_Num_Ln__c'] = (
             bookings_df_grouped.loc[:, 'OrderNum__c'].astype(str)
@@ -282,60 +370,17 @@ class EpicorClass:
         return bookings_df_grouped
 
     def merge_dfs(self, df1, df2):
-        df1.append(df2)
-        df1.astype({'Name': 'int32'})
-        df1.sort_values(
+        merged_df = df1.append(df2)
+        merged_df.astype({'Name': 'int32'})
+        merged_df.sort_values(
             by=['Name'],
             ascending=True,
             inplace=True
         )
 
-        df_grouped = df1.groupby(
+        df_grouped = merged_df.groupby(
             ['OrderNum__c', 'OrderLn__c'],
             as_index=False
-        ).agg({
-            'Name': 'last',
-            'Book_Date__c': 'last',
-            'BookType__c': 'last',
-            'OrderRel__c': 'max',
-            'Prod_Code__c': 'last',
-            'SN__c': 'first',
-            'Order_Line_Amt__c': 'sum',
-            'PO_Num__c': 'first',
-            'Need_By_Date__c': 'last',
-            'Quote_Num__c': 'first',
-            'Quote_Line__c': 'first',
-            'Sales_Representative__c': 'first',
-            'Salesperson__c': 'first',
-            'Primary_Salesperson_Origin__c': 'first',
-            'Sales_Director_Origin__c': 'first',
-            'Regional_Sales_Manager_Origin__c': 'first',
-            'Cust_ID__c': 'first',
-            'Customer_Name__c': 'first',
-            'Ultimate_User__c': 'first',
-            'Bill_To_Name__c': 'first',
-            'Bill_To_Address_1__c': 'first',
-            'Bill_To_Address_2__c': 'first',
-            'Bill_To_Address_3__c': 'first',
-            'Bill_To_City__c': 'first',
-            'Bill_To_State__c': 'first',
-            'Bill_To_Zip__c': 'first',
-            'Bill_To_Country__c': 'first',
-            'Ship_To_Num__c': 'first',
-            'Ship_To_Name__c': 'first',
-            'Ship_To_Address_1__c': 'first',
-            'Ship_To_Address_2__c': 'first',
-            'Ship_To_Address_3__c': 'first',
-            'Ship_To_City__c': 'first',
-            'Ship_To_State__c': 'first',
-            'Ship_To_Zip__c': 'first',
-            'Ship_To_Country__c': 'first',
-            'Packager__c': 'first',
-            'Market_Segment__c': 'first',
-            'Payment_Terms__c': 'first',
-            'OrderHed_FOB__c': 'first',
-            'SysRowID__c': 'last',
-            'Order_Num_Ln__c': 'last'
-        })
+        ).agg(SFDC_EPICOR_AGG_DICT)
 
         return df_grouped

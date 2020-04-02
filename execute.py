@@ -4,32 +4,34 @@ import pandas as pd
 
 from salespy import SalesforceClass, EpicorClass
 
-# login to Salesforce
+# login to Salesforce & get credentials
 sf = SalesforceClass(
     username='bko@fs-elliott.com.test', sandbox='test',
     org_id='00D7A0000009Kmw'
 )
-
 creds = sf.login()
 
-# get most recent Tran Num
+# get most recent Tran Num for filtering Epicor report
 last_tran_num = sf.get_last_tran(creds=creds)
 print(f'--- Last SFDC Tran Num Extracted: {last_tran_num} ---')
 
 # get Epicor file
+# ----- TODO: Loop through files and delete ----- #
 directory = (
     '/Users/beekayokay/OneDrive/Projects/'
     'Salesforce Epicor Integration/'
 )
 file_name = 'test_bookings_df_2.xlsx'
-
-# call Epicor Class and assign DataFrame
 epicor = EpicorClass()
 bookings_df = epicor.bookings_to_df(os.path.join(directory, file_name))
 
 # remove old Tran Nums
 old_trans = bookings_df['Name'] <= last_tran_num
 bookings_df = bookings_df[~old_trans]
+
+# add fo and asset
+bookings_df = sf.add_sn_fo(creds=creds, df=bookings_df)
+bookings_df = sf.add_sn_asset(creds=creds, df=bookings_df)
 print(f'--- Bookings Data Size: {bookings_df.size} ---')
 
 if bookings_df.size > 0:

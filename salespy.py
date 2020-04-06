@@ -170,28 +170,27 @@ class SalesforceClass:
         else:
             return 0
 
-    def get_epicor_trans(self, creds, order_num_ln=None):
+    def get_epicor_trans(self, creds, order_num_ln):
         sfdc_fields = SFDC_LIST
 
-        if order_num_ln is None:
-            query_call = (
-                f"SELECT {', '.join(map(str, sfdc_fields))}"
-                "FROM Epicor_Transaction__c"
-            )
+        if len(order_num_ln) == 0:
+            query_df = pd.DataFrame()
         else:
+            if len(order_num_ln) == 1:
+                order_num_ln = order_num_ln[0]
             query_call = (
                 f"SELECT {', '.join(map(str, sfdc_fields))} "
                 "FROM Epicor_Transaction__c "
                 f"WHERE Order_Num_Ln__c IN {order_num_ln}"
             )
 
-        try:
-            query_df = self.bulk_query(
-                creds=creds, object_api='Epicor_Transaction__c',
-                query_call=query_call
-            )
-        except IndexError:
-            query_df = pd.DataFrame()
+            try:
+                query_df = self.bulk_query(
+                    creds=creds, object_api='Epicor_Transaction__c',
+                    query_call=query_call
+                )
+            except IndexError:
+                query_df = pd.DataFrame()
 
         return query_df
 
@@ -334,7 +333,8 @@ class EpicorClass:
                 'Book Date': 'datetime64[D]',
                 'Need By Date': 'datetime64[D]',
                 'Quote Num': 'object',
-                'Quote Line': 'object'
+                'Quote Line': 'object',
+                'SN': 'object'
             }
         )
 
@@ -342,8 +342,9 @@ class EpicorClass:
         bookings_df.loc[bookings_df['Quote Line'] == 0, 'Quote Line'] = np.nan
         bookings_df = bookings_df.replace('\n', ' ', regex=True)
         bookings_df = bookings_df.replace("'", ' ', regex=True)
-        bookings_df['SN'] = bookings_df['SN'].str.strip()
-        bookings_df['SN'] = bookings_df['SN'].str[:254]
+        if bookings_df['SN'].count() != 0:
+            bookings_df['SN'] = bookings_df['SN'].str.strip()
+            bookings_df['SN'] = bookings_df['SN'].str[:254]
 
         bookings_df.sort_values(
             by=['Tran Num'],

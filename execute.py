@@ -1,7 +1,5 @@
 import os
 
-import pandas as pd
-
 from salespy import SalesforceClass, EpicorClass
 
 # login to Salesforce & get credentials
@@ -21,7 +19,7 @@ directory = (
     '/Users/beekayokay/OneDrive/Projects/'
     'Salesforce Epicor Integration/'
 )
-file_name = 'test_bookings_df_2.xlsx'
+file_name = 'test_bookings_df.xlsx'
 epicor = EpicorClass()
 bookings_df = epicor.bookings_to_df(os.path.join(directory, file_name))
 
@@ -34,14 +32,11 @@ bookings_df = sf.add_sn_fo(creds=creds, df=bookings_df)
 bookings_df = sf.add_sn_asset(creds=creds, df=bookings_df)
 print(f'--- Bookings Data Size: {bookings_df.size} ---')
 
-if bookings_df.size > 0:
-    # get tuples of Order Num Ln
-    order_num_ln = tuple(bookings_df['Order_Num_Ln__c'])
+# get tuples of Order Num Ln
+order_num_ln = tuple(bookings_df['Order_Num_Ln__c'])
 
-    # get Salesforce records to append
-    sfdc_df = sf.get_epicor_trans(creds=creds, order_num_ln=order_num_ln)
-else:
-    sfdc_df = pd.DataFrame()
+# get Salesforce records to append
+sfdc_df = sf.get_epicor_trans(creds=creds, order_num_ln=order_num_ln)
 print(f'--- Old SFDC Data Size: {sfdc_df.size} ---')
 
 # merge DataFrames

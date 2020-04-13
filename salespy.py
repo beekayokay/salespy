@@ -100,8 +100,8 @@ SFDC_EPICOR_AGG_DICT = {
     'Ship_To_Country__c': 'first', 'Packager__c': 'first',
     'Market_Segment__c': 'first', 'Payment_Terms__c': 'first',
     'OrderHed_FOB__c': 'first', 'SysRowID__c': 'last',
-    'Order_Num_Ln__c': 'last', 'Factory_Order__c': 'last',
-    'Asset__c': 'last'
+    'Order_Num_Ln__c': 'last', 'Factory_Order__c': 'first',
+    'Asset__c': 'first'
 }
 
 
@@ -372,7 +372,7 @@ class EpicorClass:
 
     def merge_dfs(self, df1, df2):
         merged_df = df1.append(df2)
-        merged_df.astype({'Name': 'int32'})
+        merged_df = merged_df.astype({'Name': 'int32'})
         merged_df.sort_values(
             by=['Name'],
             ascending=True,

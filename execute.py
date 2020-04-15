@@ -43,6 +43,10 @@ bookings_df = sf.add_sn_fo(creds=creds, df=bookings_df)
 bookings_df = sf.add_sn_asset(creds=creds, df=bookings_df)
 print(f'--- Added FO & SN: {bookings_df.size} ---')
 
+# add cp and sales lead
+bookings_df = sf.add_code_ref(creds=creds, df=bookings_df)
+print(f'--- Added CP & SL: {bookings_df.size} ---')
+
 # merge DataFrames
 merged_df = epicor.merge_dfs(bookings_df, sfdc_df)
 print(f'--- Merged DataFrames: {merged_df.size} ---')

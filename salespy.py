@@ -22,7 +22,8 @@ SFDC_LIST = [
     'Ship_To_Address_2__c', 'Ship_To_Address_3__c', 'Ship_To_City__c',
     'Ship_To_State__c', 'Ship_To_Zip__c', 'Ship_To_Country__c', 'Packager__c',
     'Market_Segment__c', 'Payment_Terms__c', 'OrderHed_FOB__c', 'SysRowID__c',
-    'Order_Num_Ln__c', 'Factory_Order__c', 'Asset__c'
+    'Order_Num_Ln__c', 'Factory_Order__c', 'Asset__c', 'Sales_Lead__c',
+    'Channel_Partner__c'
 ]
 
 EPICOR_TO_SFDC_DICT = {
@@ -101,7 +102,8 @@ SFDC_EPICOR_AGG_DICT = {
     'Market_Segment__c': 'first', 'Payment_Terms__c': 'first',
     'OrderHed_FOB__c': 'first', 'SysRowID__c': 'last',
     'Order_Num_Ln__c': 'last', 'Factory_Order__c': 'first',
-    'Asset__c': 'first'
+    'Asset__c': 'first', 'Sales_Lead__c': 'first',
+    'Channel_Partner__c': 'first'
 }
 
 
@@ -277,6 +279,154 @@ class SalesforceClass:
         )
 
         df = df.merge(asset_df, how='left', on='SN__c')
+
+        return df
+
+    def add_code_ref(self, creds, df):
+        df['Code_Ref'] = df['Salesperson__c']
+
+        def code_ref_ind(df):
+            inds = (
+                df['Code_Ref'].str.startswith('D')
+                |
+                df['Code_Ref'].str.startswith('R')
+                |
+                df['Code_Ref'].str.startswith('F')
+            )
+            return inds
+
+        cp_inds = code_ref_ind(df)
+        df.loc[~cp_inds, 'Code_Ref'] = (
+            df.loc[~cp_inds, 'Primary_Salesperson_Origin__c']
+        )
+        cp_inds = code_ref_ind(df)
+        df.loc[~cp_inds, 'Code_Ref'] = (
+            df.loc[~cp_inds, 'Regional_Sales_Manager_Origin__c']
+        )
+        cp_inds = code_ref_ind(df)
+        df.loc[~cp_inds, 'Code_Ref'] = (
+            df.loc[~cp_inds, 'Sales_Representative__c']
+        )
+
+        code = df['Code_Ref'].drop_duplicates()
+        code.dropna(inplace=True)
+        code_tuple = tuple(code)
+
+        acc_df = pd.DataFrame(
+            columns=[
+                'Id', 'FS_Elliott_Sales_Lead__c', 'Distributor_Agreement__c',
+                'Sales_Representative_Agreement__c'
+            ]
+        )
+        user_df = pd.DataFrame(columns=['Id', 'Salescode__c'])
+        acc_temp_list = []
+        user_temp_list = []
+
+        if len(code_tuple) > 0:
+            if len(code_tuple) == 1:
+                code_tuple = code_tuple[0]
+            for num, each in enumerate(code_tuple):
+                acc_temp_list.append(each)
+                if (
+                    len(str(acc_temp_list)) < 50000
+                    and
+                    num != len(code_tuple)-1
+                ):
+                    continue
+                else:
+                    acc_query = (
+                        "SELECT Id, FS_Elliott_Sales_Lead__c, "
+                        "Distributor_Agreement__c, "
+                        "Sales_Representative_Agreement__c "
+                        "FROM Account "
+                        "WHERE "
+                        f"(Distributor_Agreement__c IN {tuple(acc_temp_list)} "
+                        "OR "
+                        "Sales_Representative_Agreement__c IN "
+                        f"{tuple(acc_temp_list)})"
+                    )
+                    acc_df_temp = self.bulk_query(
+                        creds=creds, object_api='Account',
+                        query_call=acc_query
+                    )
+                    acc_df = acc_df.append(
+                        acc_df_temp, ignore_index=True
+                    )
+                    acc_df_temp = pd.DataFrame()
+                    acc_temp_list = []
+
+        if len(code_tuple) > 0:
+            if len(code_tuple) == 1:
+                code_tuple = code_tuple[0]
+            for num, each in enumerate(code_tuple):
+                user_temp_list.append(each)
+                if (
+                    len(str(user_temp_list)) < 50000
+                    and
+                    num != len(code_tuple)-1
+                ):
+                    continue
+                else:
+                    user_query = (
+                        "SELECT Id, Salescode__c "
+                        "FROM User "
+                        "WHERE "
+                        f"(Salescode__c IN {tuple(user_temp_list)} AND "
+                        "UserType = 'Standard')"
+                    )
+                    user_df_temp = self.bulk_query(
+                        creds=creds, object_api='User',
+                        query_call=user_query
+                    )
+                    user_df = user_df.append(
+                        user_df_temp, ignore_index=True
+                    )
+                    user_df_temp = pd.DataFrame()
+                    user_temp_list = []
+
+        dist_df = acc_df[
+            ['Id', 'FS_Elliott_Sales_Lead__c', 'Distributor_Agreement__c']
+        ].copy()
+        rep_df = acc_df[
+            [
+                'Id', 'FS_Elliott_Sales_Lead__c',
+                'Sales_Representative_Agreement__c'
+            ]
+        ].copy()
+        dist_df.rename(
+            columns={
+                'Id': 'Channel_Partner__c',
+                'FS_Elliott_Sales_Lead__c': 'Sales_Lead__c',
+                'Distributor_Agreement__c': 'Code_Ref'
+            },
+            inplace=True
+        )
+        rep_df.rename(
+            columns={
+                'Id': 'CP_Rep', 'FS_Elliott_Sales_Lead__c': 'SL_Rep',
+                'Sales_Representative_Agreement__c': 'Code_Ref'
+            },
+            inplace=True
+        )
+        user_df.rename(
+            columns={
+                'Id': 'SL_User', 'Salescode__c': 'Code_Ref'
+            },
+            inplace=True
+        )
+
+        df = df.merge(dist_df, how='left', on='Code_Ref')
+        df = df.merge(rep_df, how='left', on='Code_Ref')
+        df = df.merge(user_df, how='left', on='Code_Ref')
+
+        cp_inds = df['Channel_Partner__c'].isnull()
+        df.loc[cp_inds, 'Channel_Partner__c'] = df.loc[cp_inds, 'CP_Rep']
+        sl_inds = df['Sales_Lead__c'].isnull()
+        df.loc[sl_inds, 'Sales_Lead__c'] = df.loc[sl_inds, 'SL_Rep']
+        sl_inds = df['Sales_Lead__c'].isnull()
+        df.loc[sl_inds, 'Sales_Lead__c'] = df.loc[sl_inds, 'SL_User']
+
+        df = df.drop(columns=['Code_Ref', 'CP_Rep', 'SL_Rep', 'SL_User'])
 
         return df
 

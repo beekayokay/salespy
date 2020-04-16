@@ -433,6 +433,10 @@ class SalesforceClass:
     def upsert_data(self, creds, object_api, ex_id, df):
         df['Book_Date__c'] = df['Book_Date__c'].dt.strftime('%Y-%m-%d')
         df['Need_By_Date__c'] = df['Need_By_Date__c'].dt.strftime('%Y-%m-%d')
+        df['Book_Date__c'] = df['Book_Date__c'].replace(np.nan, '1900-01-01')
+        df['Need_By_Date__c'] = df['Need_By_Date__c'].replace(
+            np.nan, '1900-01-01'
+        )
         df = df.replace(np.nan, '', regex=True)
 
         df_tuple = df.itertuples(index=False)
@@ -480,12 +484,19 @@ class EpicorClass:
         bookings_df = pd.read_excel(
             read,
             dtype={
-                'Book Date': 'datetime64[D]',
-                'Need By Date': 'datetime64[D]',
+                # 'Book Date': 'datetime64[D]',
+                # 'Need By Date': 'datetime64[D]',
                 'Quote Num': 'object',
                 'Quote Line': 'object',
                 'SN': 'object'
             }
+        )
+
+        bookings_df['Book Date'] = pd.to_datetime(
+            bookings_df['Book Date'], errors='coerce'
+        )
+        bookings_df['Need By Date'] = pd.to_datetime(
+            bookings_df['Need By Date'], errors='coerce'
         )
 
         bookings_df.loc[bookings_df['Quote Num'] == 0, 'Quote Num'] = np.nan

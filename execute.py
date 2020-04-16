@@ -31,8 +31,11 @@ for each in os.listdir(directory):
         bookings_df = bookings_df.append(temp_df, ignore_index=True)
     except IsADirectoryError:
         continue
-bookings_df.sort_values(by=['Name'], ascending=True, inplace=True)
-bookings_df.drop_duplicates(inplace=True, keep='first')
+print(f'--- Merged Files: {bookings_df.size} ---')
+
+# aggregate df by OrderNum & OrderLn
+bookings_df = epicor.aggregate_df(bookings_df)
+print(f'--- Aggregated Data: {bookings_df.size} ---')
 
 # get most recent Tran Num for filtering Epicor report
 last_tran_num = sf.get_last_tran(creds=creds)

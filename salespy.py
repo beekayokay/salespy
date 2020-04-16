@@ -283,54 +283,63 @@ class SalesforceClass:
         return df
 
     def add_code_ref(self, creds, df):
-        df['Code_Ref'] = df['Salesperson__c']
 
-        def code_ref_ind(df):
-            inds = (
-                df['Code_Ref'].str.startswith('D')
-                |
-                df['Code_Ref'].str.startswith('R')
-                |
-                df['Code_Ref'].str.startswith('F')
-            )
-            return inds
+        sp_code = df['Primary_Salesperson_Origin__c'].drop_duplicates()
+        sp_code.dropna(inplace=True)
+        sp_tuple = tuple(sp_code)
 
-        cp_inds = code_ref_ind(df)
-        df.loc[~cp_inds, 'Code_Ref'] = (
-            df.loc[~cp_inds, 'Primary_Salesperson_Origin__c']
-        )
-        cp_inds = code_ref_ind(df)
-        df.loc[~cp_inds, 'Code_Ref'] = (
-            df.loc[~cp_inds, 'Regional_Sales_Manager_Origin__c']
-        )
-        cp_inds = code_ref_ind(df)
-        df.loc[~cp_inds, 'Code_Ref'] = (
-            df.loc[~cp_inds, 'Sales_Representative__c']
-        )
+        rep_code = df['Salesperson__c'].drop_duplicates()
+        rep_code.dropna(inplace=True)
+        rep_tuple = tuple(rep_code)
 
-        code = df['Code_Ref'].drop_duplicates()
-        code.dropna(inplace=True)
-        code_tuple = tuple(code)
-
+        user_df = pd.DataFrame(columns=['Id', 'Salescode__c'])
         acc_df = pd.DataFrame(
             columns=[
                 'Id', 'FS_Elliott_Sales_Lead__c', 'Distributor_Agreement__c',
                 'Sales_Representative_Agreement__c'
             ]
         )
-        user_df = pd.DataFrame(columns=['Id', 'Salescode__c'])
-        acc_temp_list = []
         user_temp_list = []
+        acc_temp_list = []
 
-        if len(code_tuple) > 0:
-            if len(code_tuple) == 1:
-                code_tuple = code_tuple[0]
-            for num, each in enumerate(code_tuple):
+        if len(sp_tuple) > 0:
+            if len(sp_tuple) == 1:
+                sp_tuple = sp_tuple[0]
+            for num, each in enumerate(sp_tuple):
+                user_temp_list.append(each)
+                if (
+                    len(str(user_temp_list)) < 50000
+                    and
+                    num != len(sp_tuple)-1
+                ):
+                    continue
+                else:
+                    user_query = (
+                        "SELECT Id, Salescode__c "
+                        "FROM User "
+                        "WHERE "
+                        f"(Salescode__c IN {tuple(user_temp_list)} AND "
+                        "UserType = 'Standard')"
+                    )
+                    user_df_temp = self.bulk_query(
+                        creds=creds, object_api='User',
+                        query_call=user_query
+                    )
+                    user_df = user_df.append(
+                        user_df_temp, ignore_index=True
+                    )
+                    user_df_temp = pd.DataFrame()
+                    user_temp_list = []
+
+        if len(rep_tuple) > 0:
+            if len(rep_tuple) == 1:
+                rep_tuple = rep_tuple[0]
+            for num, each in enumerate(rep_tuple):
                 acc_temp_list.append(each)
                 if (
                     len(str(acc_temp_list)) < 50000
                     and
-                    num != len(code_tuple)-1
+                    num != len(rep_tuple)-1
                 ):
                     continue
                 else:
@@ -355,37 +364,11 @@ class SalesforceClass:
                     acc_df_temp = pd.DataFrame()
                     acc_temp_list = []
 
-        if len(code_tuple) > 0:
-            if len(code_tuple) == 1:
-                code_tuple = code_tuple[0]
-            for num, each in enumerate(code_tuple):
-                user_temp_list.append(each)
-                if (
-                    len(str(user_temp_list)) < 50000
-                    and
-                    num != len(code_tuple)-1
-                ):
-                    continue
-                else:
-                    user_query = (
-                        "SELECT Id, Salescode__c "
-                        "FROM User "
-                        "WHERE "
-                        f"(Salescode__c IN {tuple(user_temp_list)} AND "
-                        "UserType = 'Standard')"
-                    )
-                    user_df_temp = self.bulk_query(
-                        creds=creds, object_api='User',
-                        query_call=user_query
-                    )
-                    user_df = user_df.append(
-                        user_df_temp, ignore_index=True
-                    )
-                    user_df_temp = pd.DataFrame()
-                    user_temp_list = []
-
         dist_df = acc_df[
-            ['Id', 'FS_Elliott_Sales_Lead__c', 'Distributor_Agreement__c']
+            [
+                'Id', 'FS_Elliott_Sales_Lead__c',
+                'Distributor_Agreement__c'
+            ]
         ].copy()
         rep_df = acc_df[
             [
@@ -393,40 +376,43 @@ class SalesforceClass:
                 'Sales_Representative_Agreement__c'
             ]
         ].copy()
+        user_df.rename(
+            columns={
+                'Id': 'Sales_Lead__c',
+                'Salescode__c': 'Primary_Salesperson_Origin__c'
+            },
+            inplace=True
+        )
+
         dist_df.rename(
             columns={
                 'Id': 'Channel_Partner__c',
-                'FS_Elliott_Sales_Lead__c': 'Sales_Lead__c',
-                'Distributor_Agreement__c': 'Code_Ref'
+                'FS_Elliott_Sales_Lead__c': 'SL_Dist',
+                'Distributor_Agreement__c': 'Salesperson__c'
             },
             inplace=True
         )
         rep_df.rename(
             columns={
-                'Id': 'CP_Rep', 'FS_Elliott_Sales_Lead__c': 'SL_Rep',
-                'Sales_Representative_Agreement__c': 'Code_Ref'
-            },
-            inplace=True
-        )
-        user_df.rename(
-            columns={
-                'Id': 'SL_User', 'Salescode__c': 'Code_Ref'
+                'Id': 'CP_Rep',
+                'FS_Elliott_Sales_Lead__c': 'SL_Rep',
+                'Sales_Representative_Agreement__c': 'Salesperson__c'
             },
             inplace=True
         )
 
-        df = df.merge(dist_df, how='left', on='Code_Ref')
-        df = df.merge(rep_df, how='left', on='Code_Ref')
-        df = df.merge(user_df, how='left', on='Code_Ref')
+        df = df.merge(user_df, how='left', on='Primary_Salesperson_Origin__c')
+        df = df.merge(dist_df, how='left', on='Salesperson__c')
+        df = df.merge(rep_df, how='left', on='Salesperson__c')
 
-        cp_inds = df['Channel_Partner__c'].isnull()
-        df.loc[cp_inds, 'Channel_Partner__c'] = df.loc[cp_inds, 'CP_Rep']
+        sl_inds = df['Sales_Lead__c'].isnull()
+        df.loc[sl_inds, 'Sales_Lead__c'] = df.loc[sl_inds, 'SL_Dist']
         sl_inds = df['Sales_Lead__c'].isnull()
         df.loc[sl_inds, 'Sales_Lead__c'] = df.loc[sl_inds, 'SL_Rep']
-        sl_inds = df['Sales_Lead__c'].isnull()
-        df.loc[sl_inds, 'Sales_Lead__c'] = df.loc[sl_inds, 'SL_User']
+        cp_inds = df['Channel_Partner__c'].isnull()
+        df.loc[cp_inds, 'Channel_Partner__c'] = df.loc[cp_inds, 'CP_Rep']
 
-        df = df.drop(columns=['Code_Ref', 'CP_Rep', 'SL_Rep', 'SL_User'])
+        df = df.drop(columns=['SL_Dist', 'CP_Rep', 'SL_Rep'])
 
         return df
 
@@ -507,18 +493,26 @@ class EpicorClass:
             bookings_df['SN'] = bookings_df['SN'].str.strip()
             bookings_df['SN'] = bookings_df['SN'].str[:254]
 
-        bookings_df.sort_values(
+        return bookings_df
+
+    def aggregate_df(self, df):
+        df.sort_values(
             by=['Tran Num'],
             ascending=True,
             inplace=True
         )
 
-        bookings_df.rename(
+        df.drop_duplicates(
+            subset=['Tran Num', 'SysRowID'], inplace=True,
+            keep='first'
+        )
+
+        df.rename(
             columns=EPICOR_TO_SFDC_DICT,
             inplace=True
         )
 
-        bookings_df_grouped = bookings_df.groupby(
+        bookings_df_grouped = df.groupby(
             ['OrderNum__c', 'OrderLn__c'],
             as_index=False
         ).agg(EPICOR_AGG_DICT)

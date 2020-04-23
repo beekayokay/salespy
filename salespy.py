@@ -22,8 +22,10 @@ SFDC_LIST = [
     'Ship_To_Address_2__c', 'Ship_To_Address_3__c', 'Ship_To_City__c',
     'Ship_To_State__c', 'Ship_To_Zip__c', 'Ship_To_Country__c', 'Packager__c',
     'Market_Segment__c', 'Payment_Terms__c', 'OrderHed_FOB__c', 'SysRowID__c',
-    'Order_Num_Ln__c', 'Factory_Order__c', 'Asset__c', 'Sales_Lead__c',
-    'Channel_Partner__c'
+    'Factory_Order__c', 'Asset__c', 'Sales_Lead__c', 'Channel_Partner__c',
+    'Original_Book_Date__c', 'Recent_Book_Type__c', 'Qty__c',
+    'Recent_Prod_Code__c', 'Recent_Need_By_Date__c, Order_Num_Ln__c,',
+    'Fiscal_Month__c', 'Original_Fiscal_Month__c'
 ]
 
 EPICOR_TO_SFDC_DICT = {
@@ -55,55 +57,6 @@ EPICOR_TO_SFDC_DICT = {
     'Packager': 'Packager__c', 'Market Segment': 'Market_Segment__c',
     'Payment Terms': 'Payment_Terms__c', 'OrderHed.FOB': 'OrderHed_FOB__c',
     'SysRowID': 'SysRowID__c'
-}
-
-EPICOR_AGG_DICT = {
-    'Name': 'last', 'Book_Date__c': 'last', 'BookType__c': 'last',
-    'OrderRel__c': 'max', 'Prod_Code__c': 'last', 'SN__c': 'first',
-    'Order_Line_Amt__c': 'sum', 'PO_Num__c': 'first',
-    'Need_By_Date__c': 'last', 'Quote_Num__c': 'first',
-    'Quote_Line__c': 'first', 'Sales_Representative__c': 'first',
-    'Salesperson__c': 'first', 'Primary_Salesperson_Origin__c': 'first',
-    'Sales_Director_Origin__c': 'first',
-    'Regional_Sales_Manager_Origin__c': 'first', 'Cust_ID__c': 'first',
-    'Customer_Name__c': 'first', 'Ultimate_User__c': 'first',
-    'Bill_To_Name__c': 'first', 'Bill_To_Address_1__c': 'first',
-    'Bill_To_Address_2__c': 'first', 'Bill_To_Address_3__c': 'first',
-    'Bill_To_City__c': 'first', 'Bill_To_State__c': 'first',
-    'Bill_To_Zip__c': 'first', 'Bill_To_Country__c': 'first',
-    'Ship_To_Num__c': 'first', 'Ship_To_Name__c': 'first',
-    'Ship_To_Address_1__c': 'first', 'Ship_To_Address_2__c': 'first',
-    'Ship_To_Address_3__c': 'first', 'Ship_To_City__c': 'first',
-    'Ship_To_State__c': 'first', 'Ship_To_Zip__c': 'first',
-    'Ship_To_Country__c': 'first', 'Packager__c': 'first',
-    'Market_Segment__c': 'first', 'Payment_Terms__c': 'first',
-    'OrderHed_FOB__c': 'first', 'SysRowID__c': 'last'
-}
-
-SFDC_EPICOR_AGG_DICT = {
-    'Name': 'last', 'Book_Date__c': 'last', 'BookType__c': 'last',
-    'OrderRel__c': 'max', 'Prod_Code__c': 'last', 'SN__c': 'first',
-    'Order_Line_Amt__c': 'sum', 'PO_Num__c': 'first',
-    'Need_By_Date__c': 'last', 'Quote_Num__c': 'first',
-    'Quote_Line__c': 'first', 'Sales_Representative__c': 'first',
-    'Salesperson__c': 'first', 'Primary_Salesperson_Origin__c': 'first',
-    'Sales_Director_Origin__c': 'first',
-    'Regional_Sales_Manager_Origin__c': 'first', 'Cust_ID__c': 'first',
-    'Customer_Name__c': 'first', 'Ultimate_User__c': 'first',
-    'Bill_To_Name__c': 'first', 'Bill_To_Address_1__c': 'first',
-    'Bill_To_Address_2__c': 'first', 'Bill_To_Address_3__c': 'first',
-    'Bill_To_City__c': 'first', 'Bill_To_State__c': 'first',
-    'Bill_To_Zip__c': 'first', 'Bill_To_Country__c': 'first',
-    'Ship_To_Num__c': 'first', 'Ship_To_Name__c': 'first',
-    'Ship_To_Address_1__c': 'first', 'Ship_To_Address_2__c': 'first',
-    'Ship_To_Address_3__c': 'first', 'Ship_To_City__c': 'first',
-    'Ship_To_State__c': 'first', 'Ship_To_Zip__c': 'first',
-    'Ship_To_Country__c': 'first', 'Packager__c': 'first',
-    'Market_Segment__c': 'first', 'Payment_Terms__c': 'first',
-    'OrderHed_FOB__c': 'first', 'SysRowID__c': 'last',
-    'Order_Num_Ln__c': 'last', 'Factory_Order__c': 'first',
-    'Asset__c': 'first', 'Sales_Lead__c': 'first',
-    'Channel_Partner__c': 'first'
 }
 
 
@@ -286,11 +239,20 @@ class SalesforceClass:
 
         sp_code = df['Primary_Salesperson_Origin__c'].drop_duplicates()
         sp_code.dropna(inplace=True)
-        sp_tuple = tuple(sp_code)
+        sp_list = list(sp_code)
 
         rep_code = df['Salesperson__c'].drop_duplicates()
         rep_code.dropna(inplace=True)
         rep_tuple = tuple(rep_code)
+
+        sa_re_code = df['Sales_Representative__c'].drop_duplicates()
+        sa_re_code.dropna(inplace=True)
+        sp_list += list(sa_re_code)
+
+        user_codes = []
+        for each in sp_list:
+            if each not in user_codes:
+                user_codes.append(each)
 
         user_df = pd.DataFrame(columns=['Id', 'Salescode__c'])
         acc_df = pd.DataFrame(
@@ -302,15 +264,15 @@ class SalesforceClass:
         user_temp_list = []
         acc_temp_list = []
 
-        if len(sp_tuple) > 0:
-            if len(sp_tuple) == 1:
-                sp_tuple = sp_tuple[0]
-            for num, each in enumerate(sp_tuple):
+        if len(user_codes) > 0:
+            if len(user_codes) == 1:
+                user_codes = user_codes[0]
+            for num, each in enumerate(user_codes):
                 user_temp_list.append(each)
                 if (
                     len(str(user_temp_list)) < 50000
                     and
-                    num != len(sp_tuple)-1
+                    num != len(user_codes)-1
                 ):
                     continue
                 else:
@@ -376,6 +338,7 @@ class SalesforceClass:
                 'Sales_Representative_Agreement__c'
             ]
         ].copy()
+        sa_re_df = user_df.copy()
         user_df.rename(
             columns={
                 'Id': 'Sales_Lead__c',
@@ -400,10 +363,18 @@ class SalesforceClass:
             },
             inplace=True
         )
+        sa_re_df.rename(
+            columns={
+                'Id': 'SA_RE',
+                'Salescode__c': 'Sales_Representative__c'
+            },
+            inplace=True
+        )
 
         df = df.merge(user_df, how='left', on='Primary_Salesperson_Origin__c')
         df = df.merge(dist_df, how='left', on='Salesperson__c')
         df = df.merge(rep_df, how='left', on='Salesperson__c')
+        df = df.merge(sa_re_df, how='left', on='Sales_Representative__c')
 
         sl_inds = df['Sales_Lead__c'].isnull()
         df.loc[sl_inds, 'Sales_Lead__c'] = df.loc[sl_inds, 'SL_Dist']
@@ -411,16 +382,94 @@ class SalesforceClass:
         df.loc[sl_inds, 'Sales_Lead__c'] = df.loc[sl_inds, 'SL_Rep']
         cp_inds = df['Channel_Partner__c'].isnull()
         df.loc[cp_inds, 'Channel_Partner__c'] = df.loc[cp_inds, 'CP_Rep']
+        sa_re_inds = df['Sales_Lead__c'].isnull()
+        df.loc[sa_re_inds, 'Sales_Lead__c'] = df.loc[sa_re_inds, 'SA_RE']
 
-        df = df.drop(columns=['SL_Dist', 'CP_Rep', 'SL_Rep'])
+        df = df.drop(columns=['SL_Dist', 'CP_Rep', 'SL_Rep', 'SA_RE'])
+
+        return df
+
+    def add_fiscal_dates(self, creds, df):
+        book_df = df['Book_Date__c']
+        book_df = book_df.append(df['Original_Book_Date__c'])
+        book_df.drop_duplicates(inplace=True)
+        book_list = [
+            datetime.strftime(each, '%Y-%m-%d') for each in list(book_df)
+        ]
+        book_query = ', '.join(list(book_list))
+
+        query_call = (
+            'SELECT Actual_Date__c, Fiscal_Month__c '
+            'FROM Fiscal_Date__c '
+            'WHERE Actual_Date__c IN '
+            f"({book_query})"
+        )
+
+        try:
+            fisc_df = self.bulk_query(
+                creds=creds, object_api='Fiscal_Date__c', query_call=query_call
+            )
+
+            cur_fisc_df = fisc_df.copy()
+            org_fisc_df = fisc_df.copy()
+            cur_fisc_df.rename(
+                columns={'Actual_Date__c': 'Book_Date__c'}, inplace=True
+            )
+            org_fisc_df.rename(
+                columns={
+                    'Actual_Date__c': 'Original_Book_Date__c',
+                    'Fiscal_Month__c': 'Original_Fiscal_Month__c'
+                }, inplace=True
+            )
+            cur_fisc_df['Book_Date__c'] = pd.to_datetime(
+                cur_fisc_df['Book_Date__c']
+            )
+            cur_fisc_df['Fiscal_Month__c'] = pd.to_datetime(
+                cur_fisc_df['Fiscal_Month__c']
+            )
+            org_fisc_df['Original_Book_Date__c'] = pd.to_datetime(
+                org_fisc_df['Original_Book_Date__c']
+            )
+            org_fisc_df['Original_Fiscal_Month__c'] = pd.to_datetime(
+                org_fisc_df['Original_Fiscal_Month__c']
+            )
+            df = df.merge(org_fisc_df, how='left', on='Original_Book_Date__c')
+            df = df.merge(cur_fisc_df, how='left', on='Book_Date__c')
+        except IndexError:
+            df = df
 
         return df
 
     def upsert_data(self, creds, object_api, ex_id, df):
         df['Book_Date__c'] = df['Book_Date__c'].dt.strftime('%Y-%m-%d')
-        df['Need_By_Date__c'] = df['Need_By_Date__c'].dt.strftime('%Y-%m-%d')
         df['Book_Date__c'] = df['Book_Date__c'].replace(np.nan, '1900-01-01')
+        df['Need_By_Date__c'] = df['Need_By_Date__c'].dt.strftime('%Y-%m-%d')
         df['Need_By_Date__c'] = df['Need_By_Date__c'].replace(
+            np.nan, '1900-01-01'
+        )
+        df['Original_Book_Date__c'] = (
+            df['Original_Book_Date__c'].dt.strftime('%Y-%m-%d')
+        )
+        df['Original_Book_Date__c'] = df['Original_Book_Date__c'].replace(
+            np.nan, '1900-01-01'
+        )
+        df['Recent_Need_By_Date__c'] = (
+            df['Recent_Need_By_Date__c'].dt.strftime('%Y-%m-%d')
+        )
+        df['Recent_Need_By_Date__c'] = df['Recent_Need_By_Date__c'].replace(
+            np.nan, '1900-01-01'
+        )
+        df['Fiscal_Month__c'] = (
+            df['Fiscal_Month__c'].dt.strftime('%Y-%m-%d')
+        )
+        df['Fiscal_Month__c'] = df['Fiscal_Month__c'].replace(
+            np.nan, '1900-01-01'
+        )
+        df['Original_Fiscal_Month__c'] = (
+            df['Original_Fiscal_Month__c'].dt.strftime('%Y-%m-%d')
+        )
+        df['Original_Fiscal_Month__c'] = df[
+            'Original_Fiscal_Month__c'].replace(
             np.nan, '1900-01-01'
         )
         df = df.replace(np.nan, '', regex=True)
@@ -470,8 +519,6 @@ class EpicorClass:
         bookings_df = pd.read_excel(
             read,
             dtype={
-                # 'Book Date': 'datetime64[D]',
-                # 'Need By Date': 'datetime64[D]',
                 'Quote Num': 'object',
                 'Quote Line': 'object',
                 'SN': 'object'
@@ -512,18 +559,39 @@ class EpicorClass:
             inplace=True
         )
 
-        bookings_df_grouped = df.groupby(
-            ['OrderNum__c', 'OrderLn__c'],
-            as_index=False
-        ).agg(EPICOR_AGG_DICT)
-
-        bookings_df_grouped['Order_Num_Ln__c'] = (
-            bookings_df_grouped.loc[:, 'OrderNum__c'].astype(str)
-            + "-"
-            + bookings_df_grouped.loc[:, 'OrderLn__c'].astype(str)
+        df['Original_Book_Date__c'] = (
+            df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['Book_Date__c'].transform('min')
+        )
+        df['Recent_Book_Type__c'] = (
+            df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['BookType__c'].transform('last')
+        )
+        df['Qty__c'] = (
+            df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['OrderRel__c'].transform('max')
+        )
+        df['Recent_Prod_Code__c'] = (
+            df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['Prod_Code__c'].transform('last')
+        )
+        df['Recent_Need_By_Date__c'] = (
+            df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['Need_By_Date__c'].transform('last')
         )
 
-        return bookings_df_grouped
+        df['Order_Num_Ln__c'] = (
+            df.loc[:, 'OrderNum__c'].astype(str)
+            + "-"
+            + df.loc[:, 'OrderLn__c'].astype(str)
+        )
+
+        return df
 
     def merge_dfs(self, df1, df2):
         merged_df = df1.append(df2)
@@ -534,9 +602,45 @@ class EpicorClass:
             inplace=True
         )
 
-        df_grouped = merged_df.groupby(
-            ['OrderNum__c', 'OrderLn__c'],
-            as_index=False
-        ).agg(SFDC_EPICOR_AGG_DICT)
+        merged_df.drop_duplicates(
+            subset=['Name', 'SysRowID__c'], inplace=True,
+            keep='first'
+        )
 
-        return df_grouped
+        merged_df['Original_Book_Date__c'] = (
+            merged_df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['Book_Date__c'].transform('min')
+        )
+        merged_df['Recent_Book_Type__c'] = (
+            merged_df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['BookType__c'].transform('last')
+        )
+        merged_df['Qty__c'] = (
+            merged_df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['OrderRel__c'].transform('max')
+        )
+        merged_df['Recent_Prod_Code__c'] = (
+            merged_df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['Prod_Code__c'].transform('last')
+        )
+        merged_df['Recent_Need_By_Date__c'] = (
+            merged_df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['Need_By_Date__c'].transform('last')
+        )
+        merged_df['Factory_Order__c'] = (
+            merged_df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['Factory_Order__c'].transform('first')
+        )
+        merged_df['Asset__c'] = (
+            merged_df.groupby(
+                ['OrderNum__c', 'OrderLn__c']
+            )['Asset__c'].transform('first')
+        )
+
+        return merged_df

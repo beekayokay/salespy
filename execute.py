@@ -1,13 +1,19 @@
+from datetime import datetime
+import math
 import os
 import shutil
 
 import pandas as pd
 from salespy import SalesforceClass, EpicorClass
 
+import config
+
+start_time = datetime.now()
+
 # login to Salesforce & get credentials
 sf = SalesforceClass(
-    username='bko@fs-elliott.com.test', sandbox='test',
-    org_id='00D7A0000009Kmw'
+    username='bko@fs-elliott.com',
+    org_id='00Di0000000XmEH', password=config.pw
 )
 creds = sf.login()
 print(f'--- Logged Into Salesforce ---')
@@ -63,6 +69,10 @@ print(f'--- Added FO & SN: {bookings_df.size} ---')
 bookings_df = sf.add_code_ref(creds=creds, df=bookings_df)
 print(f'--- Added CP & SL: {bookings_df.size} ---')
 
+# add fiscal dates
+bookings_df = sf.add_fiscal_dates(creds=creds, df=bookings_df)
+print(f'--- Added Fiscal Dates: {bookings_df.size} ---')
+
 # merge DataFrames
 merged_df = epicor.merge_dfs(bookings_df, sfdc_df)
 print(f'--- Merged DataFrames: {merged_df.size} ---')
@@ -71,7 +81,7 @@ print(f'--- Merged DataFrames: {merged_df.size} ---')
 if merged_df.size > 0:
     sf.upsert_data(
         creds=creds, object_api='Epicor_Transaction__c',
-        ex_id='Order_Num_Ln__c', df=merged_df
+        ex_id='Name', df=merged_df
     )
 
 # move upserted files
@@ -84,3 +94,10 @@ for each in os.listdir(directory):
     )
 
 print('--- DONE! ---')
+
+duration = (datetime.now() - start_time).seconds
+duration_beaut = (
+    f'Script Time: {math.floor(duration/60)} minutes'
+    f' and {duration - (math.floor(duration/60)*60)} seconds'
+)
+print(duration_beaut)

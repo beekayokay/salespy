@@ -11,6 +11,3 @@ Dataload Assets
 Custom Report Type(s)
 Account Field - FSE Sales Lead (Admin Only)
 Dataload FSE Sales Lead
-
-TODO TOMORROW
-Capture date when transaction was new
